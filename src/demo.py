@@ -105,3 +105,19 @@ def demo(opt):
         cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -b 5000k -c:v mpeg4 {}'.format(osp.join(result_root, 'frame'),
                                                                                   output_video_path)
         os.system(cmd_str)
+
+if __name__ == "__main__":
+    import argparse
+
+    def parse_opts():
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--input_video1', type=str, required=True, help='Path to the first input video.')
+        parser.add_argument('--input_video2', type=str, required=True, help='Path to the second input video.')
+        parser.add_argument('--output_root', type=str, default='.', help='Root directory for output.')
+        parser.add_argument('--img_size', type=tuple, default=(640, 480), help='Size of the images (width, height).')
+        parser.add_argument('--output_format', type=str, choices=['text', 'video'], default='video', help='Output format.')
+        parser.add_argument('--gpus', type=int, nargs='+', default=[0], help='List of GPU ids to use.')
+        return parser.parse_args()
+
+    opt = parse_opts()
+    demo(opt)
