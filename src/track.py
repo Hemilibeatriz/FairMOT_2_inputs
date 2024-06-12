@@ -67,8 +67,7 @@ def write_results_score(filename, results, data_type):
     logger.info('save results to {}'.format(filename))
 
 
-def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_in_waiting_area, time_in_service_area,
-                          waiting_area, service_area):
+def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_data, waiting_area, service_area):
     # Desenhar as áreas de espera e de atendimento
     cv2.rectangle(img, (waiting_area[0], waiting_area[1]), (waiting_area[2], waiting_area[3]), (255, 0, 0), 2)
     cv2.putText(img, 'Waiting Area', (waiting_area[0], waiting_area[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
@@ -88,16 +87,21 @@ def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_in_wait
         # Adicionar o ID do objeto
         cv2.putText(img, f'ID: {tid}', (int(tlwh[0]), int(tlwh[1] - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        # Adicionar tempo total de espera e atendimento
-        waiting_time = time_in_waiting_area.get(tid, 0)
-        service_time = time_in_service_area.get(tid, 0)
+        # Adicionar tempos
+        total_time = time_data[tid]['total']
+        waiting_time = time_data[tid]['waiting']
+        service_time = time_data[tid]['service']
+
+        # Adicionar texto com tempo total
+        cv2.putText(img, f'Total: {total_time:.2f}s', (int(tlwh[0]), int(tlwh[1] - 30)), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                    (0, 255, 0), 2)
 
         # Adicionar texto com tempo de espera
-        cv2.putText(img, f'Waiting: {waiting_time:.2f}s', (int(tlwh[0]), int(tlwh[1] - 30)), cv2.FONT_HERSHEY_SIMPLEX,
+        cv2.putText(img, f'Waiting: {waiting_time:.2f}s', (int(tlwh[0]), int(tlwh[1] - 50)), cv2.FONT_HERSHEY_SIMPLEX,
                     0.5, (0, 255, 0), 2)
 
         # Adicionar texto com tempo de atendimento
-        cv2.putText(img, f'Service: {service_time:.2f}s', (int(tlwh[0]), int(tlwh[1] - 50)), cv2.FONT_HERSHEY_SIMPLEX,
+        cv2.putText(img, f'Service: {service_time:.2f}s', (int(tlwh[0]), int(tlwh[1] - 70)), cv2.FONT_HERSHEY_SIMPLEX,
                     0.5, (0, 255, 0), 2)
 
     # Caminho de saída para a imagem processada
@@ -118,9 +122,8 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     waiting_area = (100, 200, 400, 600)
     service_area = (500, 200, 800, 600)
 
-    # Inicializar dicionário para tempos de espera e atendimento
-    time_in_waiting_area = {}
-    time_in_service_area = {}
+    # Inicializar dicionário para tempos
+    time_data = {}
 
     for i, (path, img, img0) in enumerate(dataloader):
         if frame_id % 20 == 0:
@@ -144,19 +147,19 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
                 online_tlwhs.append(tlwh)
                 online_ids.append(tid)
 
-                # Adiciona o frame_id para o objeto rastreado
-                if tid not in tracking_data:
-                    tracking_data[tid] = []
-                    time_in_waiting_area[tid] = 0
-                    time_in_service_area[tid] = 0
-                tracking_data[tid].append(frame_id)
+                # Inicializar tempos para o objeto se ainda não existir
+                if tid not in time_data:
+                    time_data[tid] = {'total': 0, 'waiting': 0, 'service': 0}
+
+                # Atualizar tempo total
+                time_data[tid]['total'] += 1 / frame_rate
 
                 # Verificar se o objeto está na área de espera ou de atendimento
                 bbox_center = (tlwh[0] + tlwh[2] / 2, tlwh[1] + tlwh[3] / 2)
                 if is_in_area(bbox_center, waiting_area):
-                    time_in_waiting_area[tid] += 1 / frame_rate
+                    time_data[tid]['waiting'] += 1 / frame_rate
                 elif is_in_area(bbox_center, service_area):
-                    time_in_service_area[tid] += 1 / frame_rate
+                    time_data[tid]['service'] += 1 / frame_rate
 
         timer.toc()
         # save results
@@ -167,8 +170,8 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
             online_im = vis.plot_tracking(img0, online_tlwhs, online_ids, frame_id=frame_id,
                                           fps=1. / timer.average_time)
             if save_dir is not None:
-                save_image_with_boxes(save_dir, online_im, online_targets, frame_id, time_in_waiting_area,
-                                      time_in_service_area, waiting_area, service_area)
+                save_image_with_boxes(save_dir, online_im, online_targets, frame_id, time_data, waiting_area,
+                                      service_area)
 
         if show_image:
             cv2.imshow('online_im', online_im)
