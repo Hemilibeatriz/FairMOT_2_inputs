@@ -74,10 +74,9 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     timer = Timer()
     results = []
     frame_id = 0
-    #for path, img, img0 in dataloader:
+    tracking_data = {}  # Para armazenar os dados de rastreamento
+
     for i, (path, img, img0) in enumerate(dataloader):
-        #if i % 8 != 0:
-            #continue
         if frame_id % 20 == 0:
             logger.info('Processing frame {} ({:.2f} fps)'.format(frame_id, 1. / max(1e-5, timer.average_time)))
 
@@ -90,7 +89,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
         online_targets = tracker.update(blob, img0)
         online_tlwhs = []
         online_ids = []
-        #online_scores = []
+
         for t in online_targets:
             tlwh = t.tlwh
             tid = t.track_id
@@ -98,23 +97,52 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
             if tlwh[2] * tlwh[3] > opt.min_box_area and not vertical:
                 online_tlwhs.append(tlwh)
                 online_ids.append(tid)
-                #online_scores.append(t.score)
+
+                # Adiciona o frame_id para o objeto rastreado
+                if tid not in tracking_data:
+                    tracking_data[tid] = []
+                tracking_data[tid].append(frame_id)
+
         timer.toc()
         # save results
         results.append((frame_id + 1, online_tlwhs, online_ids))
-        #results.append((frame_id + 1, online_tlwhs, online_ids, online_scores))
+
+        # Save image with bounding boxes
         if show_image or save_dir is not None:
             online_im = vis.plot_tracking(img0, online_tlwhs, online_ids, frame_id=frame_id,
                                           fps=1. / timer.average_time)
+            if save_dir is not None:
+                # Calcular o tempo de rastreamento para cada objeto
+                tracking_times = {tid: len(frames) / frame_rate for tid, frames in tracking_data.items()}
+                save_image_with_boxes(save_dir, online_im, online_targets, frame_id, tracking_times)
+
         if show_image:
             cv2.imshow('online_im', online_im)
         if save_dir is not None:
             cv2.imwrite(os.path.join(save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
         frame_id += 1
+
     # save results
     write_results(result_filename, results, data_type)
-    #write_results_score(result_filename, results, data_type)
     return frame_id, timer.average_time, timer.calls
+
+
+def save_image_with_boxes(save_dir, img, online_targets, frame_idx, tracking_times):
+    for t in online_targets:
+        tlwh = t.tlwh
+        tid = t.track_id
+        # Draw bounding box and add text
+        cv2.rectangle(img, (int(tlwh[0]), int(tlwh[1])), (int(tlwh[0] + tlwh[2]), int(tlwh[1] + tlwh[3])), (0, 255, 0),
+                      2)
+        cv2.putText(img, f'ID: {tid}', (int(tlwh[0]), int(tlwh[1] - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        # Add total tracking time
+        tracking_time = tracking_times.get(tid, 0)
+        cv2.putText(img, f'Time: {tracking_time:.2f}s', (int(tlwh[0]), int(tlwh[1] - 30)), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (0, 255, 0), 2)
+
+    output_path = os.path.join(save_dir, f'{frame_idx:05d}.jpg')
+    cv2.imwrite(output_path, img)
 
 
 def main(opt, data_root='/data/MOT16/train', det_root=None, seqs=('MOT16-05',), exp_name='demo',
