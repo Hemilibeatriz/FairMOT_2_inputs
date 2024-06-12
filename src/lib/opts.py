@@ -114,7 +114,10 @@ class opts(object):
     self.parser.add_argument('--nms_thres', type=float, default=0.4, help='iou thresh for nms')
     self.parser.add_argument('--track_buffer', type=int, default=30, help='tracking buffer')
     self.parser.add_argument('--min-box-area', type=float, default=100, help='filter out tiny boxes')
-    self.parser.add_argument('--input-video', type=str,
+    self.parser.add_argument('--input_video1', type=str,
+                             default='../videos/MOT16-03.mp4',
+                             help='path to the input video')
+    self.parser.add_argument('--input_video2', type=str,
                              default='../videos/MOT16-03.mp4',
                              help='path to the input video')
     self.parser.add_argument('--output-format', type=str, default='video', help='video or text')
