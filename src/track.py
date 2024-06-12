@@ -67,6 +67,44 @@ def write_results_score(filename, results, data_type):
     logger.info('save results to {}'.format(filename))
 
 
+def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_in_waiting_area, time_in_service_area,
+                          waiting_area, service_area):
+    # Desenhar as áreas de espera e de atendimento
+    cv2.rectangle(img, (waiting_area[0], waiting_area[1]), (waiting_area[2], waiting_area[3]), (255, 0, 0), 2)
+    cv2.putText(img, 'Waiting Area', (waiting_area[0], waiting_area[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                (255, 0, 0), 2)
+
+    cv2.rectangle(img, (service_area[0], service_area[1]), (service_area[2], service_area[3]), (0, 0, 255), 2)
+    cv2.putText(img, 'Service Area', (service_area[0], service_area[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                (0, 0, 255), 2)
+
+    for t in online_targets:
+        tlwh = t.tlwh
+        tid = t.track_id
+        # Desenhar a bounding box ao redor do objeto rastreado
+        cv2.rectangle(img, (int(tlwh[0]), int(tlwh[1])), (int(tlwh[0] + tlwh[2]), int(tlwh[1] + tlwh[3])), (0, 255, 0),
+                      2)
+
+        # Adicionar o ID do objeto
+        cv2.putText(img, f'ID: {tid}', (int(tlwh[0]), int(tlwh[1] - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        # Adicionar tempo total de espera e atendimento
+        waiting_time = time_in_waiting_area.get(tid, 0)
+        service_time = time_in_service_area.get(tid, 0)
+
+        # Adicionar texto com tempo de espera
+        cv2.putText(img, f'Waiting: {waiting_time:.2f}s', (int(tlwh[0]), int(tlwh[1] - 30)), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (0, 255, 0), 2)
+
+        # Adicionar texto com tempo de atendimento
+        cv2.putText(img, f'Service: {service_time:.2f}s', (int(tlwh[0]), int(tlwh[1] - 50)), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (0, 255, 0), 2)
+
+    # Caminho de saída para a imagem processada
+    output_path = os.path.join(save_dir, f'{frame_idx:05d}.jpg')
+    cv2.imwrite(output_path, img)
+
+
 def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_image=True, frame_rate=30, use_cuda=True):
     if save_dir:
         mkdir_if_missing(save_dir)
@@ -124,13 +162,13 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
         # save results
         results.append((frame_id + 1, online_tlwhs, online_ids))
 
-        # Save image with bounding boxes
+        # Save image with bounding boxes and area markings
         if show_image or save_dir is not None:
             online_im = vis.plot_tracking(img0, online_tlwhs, online_ids, frame_id=frame_id,
                                           fps=1. / timer.average_time)
             if save_dir is not None:
                 save_image_with_boxes(save_dir, online_im, online_targets, frame_id, time_in_waiting_area,
-                                      time_in_service_area)
+                                      time_in_service_area, waiting_area, service_area)
 
         if show_image:
             cv2.imshow('online_im', online_im)
@@ -147,27 +185,6 @@ def is_in_area(center, area):
     x, y = center
     x1, y1, x2, y2 = area
     return x1 <= x <= x2 and y1 <= y <= y2
-
-
-def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_in_waiting_area, time_in_service_area):
-    for t in online_targets:
-        tlwh = t.tlwh
-        tid = t.track_id
-        # Draw bounding box and add text
-        cv2.rectangle(img, (int(tlwh[0]), int(tlwh[1])), (int(tlwh[0] + tlwh[2]), int(tlwh[1] + tlwh[3])), (0, 255, 0),
-                      2)
-        cv2.putText(img, f'ID: {tid}', (int(tlwh[0]), int(tlwh[1] - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-        # Add total tracking time
-        waiting_time = time_in_waiting_area.get(tid, 0)
-        service_time = time_in_service_area.get(tid, 0)
-        cv2.putText(img, f'Waiting: {waiting_time:.2f}s', (int(tlwh[0]), int(tlwh[1] - 30)), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5, (0, 255, 0), 2)
-        cv2.putText(img, f'Service: {service_time:.2f}s', (int(tlwh[0]), int(tlwh[1] - 50)), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5, (0, 255, 0), 2)
-
-    output_path = os.path.join(save_dir, f'{frame_idx:05d}.jpg')
-    cv2.imwrite(output_path, img)
 
 
 def main(opt, data_root='/data/MOT16/train', det_root=None, seqs=('MOT16-05',), exp_name='demo',
