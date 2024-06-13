@@ -50,7 +50,6 @@ def write_results(filename, results, data_type):
 
 
 def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
-<<<<<<< HEAD
     if not os.path.isfile(filename):
         with open(filename,'w',newline='') as f:
             writer=csv.writer(f)
@@ -65,16 +64,6 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
 
     with open(filename, 'a', newline='') as f:  # Abrir no modo append
         writer = csv.writer(f)
-=======
-    if data_type == 'mot':
-        save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1\n'
-    elif data_type == 'kitti':
-        save_format = '{frame} {id} pedestrian 0 0 -10 {x1} {y1} {x2} {y2} -10 -10 -10 -1000 -1000 -1000 -10\n'
-    else:
-        raise ValueError(data_type)
-
-    with open(filename, 'a') as f:  # Abrir no modo append
->>>>>>> a3567e4e4825e26ab40447800fdeb54322d9d7ea
         if data_type == 'kitti':
             frame_id -= 1
         for tlwh, track_id in zip(tlwhs, track_ids):
