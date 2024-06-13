@@ -46,6 +46,23 @@ def write_results(filename, results, data_type):
 
 
 def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
+    #irei apagar daqui:
+    # Caminho completo para o arquivo
+    caminho_arquivo = filename
+
+    # Extrai o diretório e o nome antigo do arquivo
+    diretorio = os.path.dirname(caminho_arquivo)
+    nome_antigo = os.path.basename(caminho_arquivo)
+
+    # Define o novo nome do arquivo
+    nome_novo = "txtincremental.txt"
+
+    # Cria o caminho completo para o novo nome
+    caminho_novo = os.path.join(diretorio, nome_novo)
+
+    # Renomeia o arquivo
+    os.rename(caminho_arquivo, caminho_novo)
+    #até aqui, é só para confirmar os arquivos gerados
     if data_type == 'mot':
         save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1\n'
     elif data_type == 'kitti':
