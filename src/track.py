@@ -6,6 +6,7 @@ import _init_paths
 import os
 import os.path as osp
 import cv2
+import csv
 import logging
 import argparse
 import motmetrics as mm
@@ -24,14 +25,15 @@ from opts import opts
 
 
 def write_results(filename, results, data_type):
-    if data_type == 'mot':
-        save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1\n'
-    elif data_type == 'kitti':
-        save_format = '{frame} {id} pedestrian 0 0 -10 {x1} {y1} {x2} {y2} -10 -10 -10 -1000 -1000 -1000 -10\n'
-    else:
-        raise ValueError(data_type)
+    with open(filename, 'w', newline='') as f:
+        writer = csv.writer(f)
+        if data_type == 'mot':
+            writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
+        elif data_type == 'kitti':
+            writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
+        else:
+            raise ValueError(data_type)
 
-    with open(filename, 'w') as f:
         for frame_id, tlwhs, track_ids in results:
             if data_type == 'kitti':
                 frame_id -= 1
@@ -40,37 +42,28 @@ def write_results(filename, results, data_type):
                     continue
                 x1, y1, w, h = tlwh
                 x2, y2 = x1 + w, y1 + h
-                line = save_format.format(frame=frame_id, id=track_id, x1=x1, y1=y1, x2=x2, y2=y2, w=w, h=h)
-                f.write(line)
+                if data_type == 'mot':
+                    writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1])
+                elif data_type == 'kitti':
+                    writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10])
     logger.info('save results to {}'.format(filename))
 
 
 def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
-    #irei apagar daqui:
-    # Caminho completo para o arquivo
-    caminho_arquivo = filename
+    if not os.path.isfile(filename):
+        with open(filename,'w',newline='') as f:
+            writer=csv.writer(f)
+            if data_type == 'mot':
+                writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
+            elif data_type == 'kitti':
+                writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
+            else:
+                raise ValueError(data_type)
 
-    # Extrai o diretório e o nome antigo do arquivo
-    diretorio = os.path.dirname(caminho_arquivo)
-    nome_antigo = os.path.basename(caminho_arquivo)
+    save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1' if data_type == 'mot' else '{frame} {id} pedestrian 0 0 -10 {x1} {y1} {x2} {y2} -10 -10 -10 -1000 -1000 -1000 -10'
 
-    # Define o novo nome do arquivo
-    nome_novo = "txtincremental.txt"
-
-    # Cria o caminho completo para o novo nome
-    caminho_novo = os.path.join(diretorio, nome_novo)
-
-    # Renomeia o arquivo
-    os.rename(caminho_arquivo, caminho_novo)
-    #até aqui, é só para confirmar os arquivos gerados
-    if data_type == 'mot':
-        save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1\n'
-    elif data_type == 'kitti':
-        save_format = '{frame} {id} pedestrian 0 0 -10 {x1} {y1} {x2} {y2} -10 -10 -10 -1000 -1000 -1000 -10\n'
-    else:
-        raise ValueError(data_type)
-
-    with open(filename, 'a') as f:  # Abrir no modo append
+    with open(filename, 'a', newline='') as f:  # Abrir no modo append
+        writer = csv.writer(f)
         if data_type == 'kitti':
             frame_id -= 1
         for tlwh, track_id in zip(tlwhs, track_ids):
@@ -78,8 +71,10 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
                 continue
             x1, y1, w, h = tlwh
             x2, y2 = x1 + w, y1 + h
-            line = save_format.format(frame=frame_id, id=track_id, x1=x1, y1=y1, x2=x2, y2=y2, w=w, h=h)
-            f.write(line)
+            if data_type == 'mot':
+                writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1])
+            elif data_type == 'kitti':
+                writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10])
     logger.info('Appended incremental results to {}'.format(filename))
 
 
@@ -163,6 +158,9 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     # Inicializar dicionário para tempos
     time_data = {}
 
+    incremental_filename = result_filename.replace('.txt', '_incremental.csv')
+
+
     for i, (path, img, img0) in enumerate(dataloader):
         if frame_id % 20 == 0:
             logger.info('Processing frame {} ({:.2f} fps)'.format(frame_id, 1. / max(1e-5, timer.average_time)))
@@ -204,7 +202,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
         results.append((frame_id + 1, online_tlwhs, online_ids))
 
         # save results incrementally
-        write_results_incremental(result_filename, frame_id + 1, online_tlwhs, online_ids, data_type)
+        write_results_incremental(incremental_filename, frame_id + 1, online_tlwhs, online_ids, data_type)
 
         # Save image with bounding boxes and area markings
         if show_image or save_dir is not None:
@@ -221,7 +219,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
         frame_id += 1
 
     # save results
-    write_results(result_filename, results, data_type)
+    write_results(result_filename.replace('.txt', '.csv'), results, data_type)
     return frame_id, timer.average_time, timer.calls
 
 
