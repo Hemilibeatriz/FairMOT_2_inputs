@@ -63,7 +63,7 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
             x2, y2 = x1 + w, y1 + h
             line = save_format.format(frame=frame_id, id=track_id, x1=x1, y1=y1, x2=x2, y2=y2, w=w, h=h)
             f.write(line)
-    logger.info('Appended results to {}'.format(filename))
+    logger.info('Appended incremental results to {}'.format(filename))
 
 
 def write_results_score(filename, results, data_type):
