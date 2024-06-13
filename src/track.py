@@ -45,6 +45,27 @@ def write_results(filename, results, data_type):
     logger.info('save results to {}'.format(filename))
 
 
+def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
+    if data_type == 'mot':
+        save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1\n'
+    elif data_type == 'kitti':
+        save_format = '{frame} {id} pedestrian 0 0 -10 {x1} {y1} {x2} {y2} -10 -10 -10 -1000 -1000 -1000 -10\n'
+    else:
+        raise ValueError(data_type)
+
+    with open(filename, 'a') as f:  # Abrir no modo append
+        if data_type == 'kitti':
+            frame_id -= 1
+        for tlwh, track_id in zip(tlwhs, track_ids):
+            if track_id < 0:
+                continue
+            x1, y1, w, h = tlwh
+            x2, y2 = x1 + w, y1 + h
+            line = save_format.format(frame=frame_id, id=track_id, x1=x1, y1=y1, x2=x2, y2=y2, w=w, h=h)
+            f.write(line)
+    logger.info('Appended results to {}'.format(filename))
+
+
 def write_results_score(filename, results, data_type):
     if data_type == 'mot':
         save_format = '{frame},{id},{x1},{y1},{w},{h},{s},1,-1,-1,-1\n'
@@ -164,6 +185,9 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
         timer.toc()
         # save results
         results.append((frame_id + 1, online_tlwhs, online_ids))
+
+        # save results incrementally
+        write_results_incremental(result_filename, frame_id + 1, online_tlwhs, online_ids, data_type)
 
         # Save image with bounding boxes and area markings
         if show_image or save_dir is not None:
