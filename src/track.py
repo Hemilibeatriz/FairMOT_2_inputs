@@ -12,6 +12,7 @@ import argparse
 import motmetrics as mm
 import numpy as np
 import torch
+from google.colab.patches import cv2_imshow
 
 from tracker.multitracker import JDETracker
 from tracking_utils import visualization as vis
@@ -213,7 +214,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
                                       service_area)
 
         if show_image:
-            cv2.imshow('online_im', online_im)
+            cv2_imshow('online_im', online_im)
         if save_dir is not None:
             cv2.imwrite(os.path.join(save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
         frame_id += 1
@@ -378,6 +379,6 @@ if __name__ == '__main__':
          data_root=data_root,
          seqs=seqs,
          exp_name='MOT17_test_public_dla34',
-         show_image=False,
+         show_image=True,
          save_images=False,
          save_videos=False)
