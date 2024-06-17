@@ -214,7 +214,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
                                       service_area)
 
         if show_image:
-            cv2_imshow('online_im', online_im)
+            cv2_imshow(online_im)
         if save_dir is not None:
             cv2.imwrite(os.path.join(save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
         frame_id += 1
