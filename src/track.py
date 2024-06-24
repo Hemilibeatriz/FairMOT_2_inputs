@@ -50,26 +50,30 @@ def write_results(filename, results, data_type):
     logger.info('save results to {}'.format(filename))
 
 
-def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type, line_count, file_index):
-    if line_count >= 1000:
-        file_index += 1
-        line_count = 0
-    new_filename = filename.replace('.csv', f'_{file_index}.csv')
-
-    file_exists = os.path.isfile(new_filename)
-
-    with open(new_filename,'w',newline='') as f:
-        writer=csv.writer(f)
-        if data_type == 'mot':
-            writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
-        elif data_type == 'kitti':
-            writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
-        else:
-            raise ValueError(data_type)
+def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type, max_lines=1000):
+    if not os.path.isfile(filename):
+        with open(filename,'w',newline='') as f:
+            writer=csv.writer(f)
+            if data_type == 'mot':
+                writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
+            elif data_type == 'kitti':
+                writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
+            else:
+                raise ValueError(data_type)
 
     save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1' if data_type == 'mot' else '{frame} {id} pedestrian 0 0 -10 {x1} {y1} {x2} {y2} -10 -10 -10 -1000 -1000 -1000 -10'
 
-    with open(new_filename, 'a', newline='') as f:  # Abrir no modo append
+    if os.path.getsize(filename) > max_lines * len(writer.writerow([]))*2:
+        current_file_num = int(filename.split('.')[0].split('_')[-1])
+        new_filename = f"{filename.split('.')[0]}_incremental_{current_file_num + 1}.csv"
+        with open(filename, 'a', newline='') as f:
+            pass
+
+        write_results_incremental(new_filename, frame_id, tlwhs, track_ids, data_type, max_lines)
+        return
+
+
+    with open(filename, 'a', newline='') as f:  # Abrir no modo append
         writer = csv.writer(f)
         if data_type == 'kitti':
             frame_id -= 1
@@ -82,9 +86,8 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type, l
                 writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1])
             elif data_type == 'kitti':
                 writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10])
-            line_count += 1
-    logger.info('Appended incremental results to {}'.format(new_filename))
-    return line_count, file_index
+    logger.info('Appended incremental results to {}'.format(filename))
+
 
 def write_results_score(filename, results, data_type):
     if data_type == 'mot':
@@ -157,8 +160,6 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     timer = Timer()
     results = []
     frame_id = 0
-    line_count = 0
-    file_index = 0
     tracking_data = {}  # Para armazenar os dados de rastreamento
 
     # Definir áreas de interesse (substituir pelos valores reais)
@@ -212,7 +213,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
         results.append((frame_id + 1, online_tlwhs, online_ids))
 
         # save results incrementally
-        line_count, file_index = write_results_incremental(result_filename, frame_id + 1, online_tlwhs, online_ids, data_type, line_count, file_index)
+        write_results_incremental(result_filename, frame_id + 1, online_tlwhs, online_ids, data_type, max_lines=1000)
 
         # Save image with bounding boxes and area markings
         if show_image or save_dir is not None:
