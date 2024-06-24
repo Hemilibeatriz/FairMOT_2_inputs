@@ -56,15 +56,16 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type, l
         line_count = 0
     new_filename = filename.replace('.csv', f'_{file_index}.csv')
 
-    if not os.path.isfile(new_filename):
-        with open(new_filename,'w',newline='') as f:
-            writer=csv.writer(f)
-            if data_type == 'mot':
-                writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
-            elif data_type == 'kitti':
-                writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
-            else:
-                raise ValueError(data_type)
+    file_exists = os.path.isfile(new_filename)
+
+    with open(new_filename,'w',newline='') as f:
+        writer=csv.writer(f)
+        if data_type == 'mot':
+            writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
+        elif data_type == 'kitti':
+            writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
+        else:
+            raise ValueError(data_type)
 
     save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1' if data_type == 'mot' else '{frame} {id} pedestrian 0 0 -10 {x1} {y1} {x2} {y2} -10 -10 -10 -1000 -1000 -1000 -10'
 
@@ -81,6 +82,7 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type, l
                 writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1])
             elif data_type == 'kitti':
                 writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10])
+            line_count += 1
     logger.info('Appended incremental results to {}'.format(new_filename))
     return line_count, file_index
 
