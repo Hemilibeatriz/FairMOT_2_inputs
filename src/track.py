@@ -218,14 +218,18 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
             if track_id not in time_data:
                 time_data[track_id] = {'wait_start': None, 'service_start': None, 'wait_time': 0, 'service_time': 0}
 
-            if is_in_area(tlwh, waiting_area):
+            # Calcular o centro do bounding box
+            x1, y1, w, h = tlwh
+            center = (x1 + w / 2, y1 + h / 2)
+
+            if is_in_area(center, waiting_area):
                 if time_data[track_id]['wait_start'] is None:
                     time_data[track_id]['wait_start'] = frame_id
                 if time_data[track_id]['service_start'] is not None:
                     time_data[track_id]['service_time'] += frame_id - time_data[track_id]['service_start']
                     time_data[track_id]['service_start'] = None
 
-            elif is_in_area(tlwh, service_area):
+            elif is_in_area(center, service_area):
                 if time_data[track_id]['wait_start'] is not None:
                     time_data[track_id]['wait_time'] += frame_id - time_data[track_id]['wait_start']
                     time_data[track_id]['wait_start'] = None
@@ -250,6 +254,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     logger.info('Time elapsed: {:.2f}s'.format(timer.total_time))
     logger.info(f'Results saved to {result_filename}')
     return frame_id, timer.average_time, time_data
+
 
 def is_in_area(center, area):
     x, y = center
