@@ -51,20 +51,43 @@ def write_results(filename, results, data_type):
 
 
 def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
-    if not os.path.isfile(filename):
-        with open(filename,'w',newline='') as f:
-            writer=csv.writer(f)
+    # Define the base filename and the file extension
+    base_filename, file_extension = os.path.splitext(filename)
+
+    # Initialize the part number
+    part_number = 0
+
+    # Helper function to get the current part filename
+    def get_part_filename(base_filename, part_number):
+        return f"{base_filename}_part{part_number}{file_extension}"
+
+    # Get the initial part filename
+    current_filename = get_part_filename(base_filename, part_number)
+
+    # Check if the current part file exists and its line count
+    while os.path.isfile(current_filename) and sum(1 for _ in open(current_filename)) >= 1000:
+        part_number += 1
+        current_filename = get_part_filename(base_filename, part_number)
+
+    # Check if the current part file needs header
+    file_needs_header = not os.path.isfile(current_filename) or sum(1 for _ in open(current_filename)) == 0
+
+    # Open the current part file for appending
+    with open(current_filename, 'a', newline='') as f:
+        writer = csv.writer(f)
+
+        # Write the header if needed
+        if file_needs_header:
             if data_type == 'mot':
                 writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
             elif data_type == 'kitti':
-                writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
+                writer.writerow(
+                    ['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height',
+                     'width', 'length', 'location', 'rotation_y', 'score'])
             else:
                 raise ValueError(data_type)
 
-    save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1' if data_type == 'mot' else '{frame} {id} pedestrian 0 0 -10 {x1} {y1} {x2} {y2} -10 -10 -10 -1000 -1000 -1000 -10'
-
-    with open(filename, 'a', newline='') as f:  # Abrir no modo append
-        writer = csv.writer(f)
+        # Write the data rows
         if data_type == 'kitti':
             frame_id -= 1
         for tlwh, track_id in zip(tlwhs, track_ids):
@@ -75,8 +98,11 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
             if data_type == 'mot':
                 writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1])
             elif data_type == 'kitti':
-                writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10])
-    logger.info('Appended incremental results to {}'.format(filename))
+                writer.writerow(
+                    [frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000,
+                     -10])
+
+    logger.info('Appended incremental results to {}'.format(current_filename))
 
 
 def write_results_score(filename, results, data_type):
@@ -159,7 +185,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     # Inicializar dicionário para tempos
     time_data = {}
 
-    incremental_filename = result_filename.replace('.txt', '_incremental.csv')
+    #incremental_filename = result_filename.replace('.txt', '_incremental.csv')
 
 
     for i, (path, img, img0) in enumerate(dataloader):
@@ -203,7 +229,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
         results.append((frame_id + 1, online_tlwhs, online_ids))
 
         # save results incrementally
-        write_results_incremental(incremental_filename, frame_id + 1, online_tlwhs, online_ids, data_type)
+        write_results_incremental(result_filename, frame_id + 1, online_tlwhs, online_ids, data_type)
 
         # Save image with bounding boxes and area markings
         if show_image or save_dir is not None:
