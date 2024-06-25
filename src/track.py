@@ -65,7 +65,7 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
     current_filename = get_part_filename(base_filename, part_number)
 
     # Check if the current part file exists and its line count
-    while os.path.isfile(current_filename) and sum(1 for _ in open(current_filename)) >= 1000:
+    while os.path.isfile(current_filename) and sum(1 for _ in open(current_filename)) >= 850:
         part_number += 1
         current_filename = get_part_filename(base_filename, part_number)
 
