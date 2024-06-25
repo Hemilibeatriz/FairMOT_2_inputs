@@ -25,16 +25,25 @@ from tracking_utils.utils import mkdir_if_missing
 from opts import opts
 
 
-def write_results(filename, results, data_type):
-    with open(filename, 'w', newline='') as f:
-        writer = csv.writer(f)
-        if data_type == 'mot':
-            writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
-        elif data_type == 'kitti':
-            writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
-        else:
-            raise ValueError(data_type)
+def write_results(base_filename, results, data_type, max_lines=1000):
+    file_count = 0
+    current_lines = 0
+    complete_filename = f"{base_filename.replace('.csv', '')}_part{file_count}.csv"
 
+    def write_header(filename):
+        with open(filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            if data_type == 'mot':
+                writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
+            elif data_type == 'kitti':
+                writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
+            else:
+                raise ValueError(data_type)
+
+    write_header(complete_filename)
+
+    with open(complete_filename, 'a', newline='') as f:
+        writer = csv.writer(f)
         for frame_id, tlwhs, track_ids in results:
             if data_type == 'kitti':
                 frame_id -= 1
@@ -47,33 +56,37 @@ def write_results(filename, results, data_type):
                     writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1])
                 elif data_type == 'kitti':
                     writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10])
-    logger.info('save results to {}'.format(filename))
+                current_lines += 1
+                if current_lines >= max_lines:
+                    file_count += 1
+                    complete_filename = f"{base_filename.replace('.csv', '')}_part{file_count}.csv"
+                    write_header(complete_filename)
+                    current_lines = 0
+
+    logger.info(f'Saved complete results to {complete_filename}')
 
 
-def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type, max_lines=1000):
-    if not os.path.isfile(filename):
-        with open(filename,'w',newline='') as f:
-            writer=csv.writer(f)
+def write_results_incremental(base_filename, frame_id, tlwhs, track_ids, data_type, max_lines=1000):
+    file_count = 0
+    current_lines = 0
+    incremental_filename = f"{base_filename.replace('.csv', '')}_part{file_count}.csv"
+
+    def write_header(filename):
+        with open(filename, 'w', newline='') as f:
+            writer = csv.writer(f)
             if data_type == 'mot':
                 writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
             elif data_type == 'kitti':
-                writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
+                writer.writerow(
+                    ['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height',
+                     'width', 'length', 'location', 'rotation_y', 'score'])
             else:
                 raise ValueError(data_type)
 
-    save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1' if data_type == 'mot' else '{frame} {id} pedestrian 0 0 -10 {x1} {y1} {x2} {y2} -10 -10 -10 -1000 -1000 -1000 -10'
+    if not os.path.isfile(incremental_filename):
+        write_header(incremental_filename)
 
-    if os.path.getsize(filename) > max_lines * len(writer.writerow([]))*2:
-        current_file_num = int(filename.split('.')[0].split('_')[-1])
-        new_filename = f"{filename.split('.')[0]}_incremental_{current_file_num + 1}.csv"
-        with open(filename, 'a', newline='') as f:
-            pass
-
-        write_results_incremental(new_filename, frame_id, tlwhs, track_ids, data_type, max_lines)
-        return
-
-
-    with open(filename, 'a', newline='') as f:  # Abrir no modo append
+    with open(incremental_filename, 'a', newline='') as f:
         writer = csv.writer(f)
         if data_type == 'kitti':
             frame_id -= 1
@@ -85,9 +98,17 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type, m
             if data_type == 'mot':
                 writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1])
             elif data_type == 'kitti':
-                writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10])
-    logger.info('Appended incremental results to {}'.format(filename))
+                writer.writerow(
+                    [frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000,
+                     -10])
+            current_lines += 1
+            if current_lines >= max_lines:
+                file_count += 1
+                incremental_filename = f"{base_filename.replace('.csv', '')}_part{file_count}.csv"
+                write_header(incremental_filename)
+                current_lines = 0
 
+    logger.info(f'Appended incremental results to {incremental_filename}')
 
 def write_results_score(filename, results, data_type):
     if data_type == 'mot':
@@ -169,9 +190,6 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     # Inicializar dicionário para tempos
     time_data = {}
 
-    incremental_filename = result_filename.replace('.txt', '_incremental.csv')
-
-
     for i, (path, img, img0) in enumerate(dataloader):
         if frame_id % 20 == 0:
             logger.info('Processing frame {} ({:.2f} fps)'.format(frame_id, 1. / max(1e-5, timer.average_time)))
@@ -194,45 +212,44 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
                 online_tlwhs.append(tlwh)
                 online_ids.append(tid)
 
-                # Inicializar tempos para o objeto se ainda não existir
-                if tid not in time_data:
-                    time_data[tid] = {'total': 0, 'waiting': 0, 'service': 0}
-
-                # Atualizar tempo total
-                time_data[tid]['total'] += 1 / frame_rate
-
-                # Verificar se o objeto está na área de espera ou de atendimento
-                bbox_center = (tlwh[0] + tlwh[2] / 2, tlwh[1] + tlwh[3] / 2)
-                if is_in_area(bbox_center, waiting_area):
-                    time_data[tid]['waiting'] += 1 / frame_rate
-                elif is_in_area(bbox_center, service_area):
-                    time_data[tid]['service'] += 1 / frame_rate
-
-        timer.toc()
-        # save results
         results.append((frame_id + 1, online_tlwhs, online_ids))
 
-        # save results incrementally
-        write_results_incremental(result_filename, frame_id + 1, online_tlwhs, online_ids, data_type, max_lines=1000)
+        for tlwh, track_id in zip(online_tlwhs, online_ids):
+            if track_id not in time_data:
+                time_data[track_id] = {'wait_start': None, 'service_start': None, 'wait_time': 0, 'service_time': 0}
 
-        # Save image with bounding boxes and area markings
-        if show_image or save_dir is not None:
-            online_im = vis.plot_tracking(img0, online_tlwhs, online_ids, frame_id=frame_id,
-                                          fps=1. / timer.average_time)
-            if save_dir is not None:
-                save_image_with_boxes(save_dir, online_im, online_targets, frame_id, time_data, waiting_area,
-                                      service_area)
+            if is_in_area(tlwh, waiting_area):
+                if time_data[track_id]['wait_start'] is None:
+                    time_data[track_id]['wait_start'] = frame_id
+                if time_data[track_id]['service_start'] is not None:
+                    time_data[track_id]['service_time'] += frame_id - time_data[track_id]['service_start']
+                    time_data[track_id]['service_start'] = None
 
-        if show_image:
-            cv2_imshow(online_im)
-        if save_dir is not None:
-            cv2.imwrite(os.path.join(save_dir, '{:05d}.jpg'.format(frame_id)), online_im)
+            elif is_in_area(tlwh, service_area):
+                if time_data[track_id]['wait_start'] is not None:
+                    time_data[track_id]['wait_time'] += frame_id - time_data[track_id]['wait_start']
+                    time_data[track_id]['wait_start'] = None
+                if time_data[track_id]['service_start'] is None:
+                    time_data[track_id]['service_start'] = frame_id
+
+            else:
+                if time_data[track_id]['wait_start'] is not None:
+                    time_data[track_id]['wait_time'] += frame_id - time_data[track_id]['wait_start']
+                    time_data[track_id]['wait_start'] = None
+                if time_data[track_id]['service_start'] is not None:
+                    time_data[track_id]['service_time'] += frame_id - time_data[track_id]['service_start']
+                    time_data[track_id]['service_start'] = None
+
+        # Incrementally write results
+        write_results_incremental(result_filename, frame_id + 1, online_tlwhs, online_ids, data_type)
+
+        timer.toc()
         frame_id += 1
 
-    # save results
-    write_results(result_filename.replace('.txt', '.csv'), results, data_type)
-    return frame_id, timer.average_time, timer.calls
-
+    write_results(result_filename, results, data_type)
+    logger.info('Time elapsed: {:.2f}s'.format(timer.total_time))
+    logger.info(f'Results saved to {result_filename}')
+    return frame_id, timer.average_time, time_data
 
 def is_in_area(center, area):
     x, y = center
