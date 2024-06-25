@@ -83,6 +83,16 @@ def write_results_incremental(base_filename, frame_id, tlwhs, track_ids, data_ty
             else:
                 raise ValueError(data_type)
 
+    # Check for existing files and count lines
+    while os.path.isfile(incremental_filename):
+        with open(incremental_filename, 'r') as f:
+            current_lines = sum(1 for line in f) - 1  # Subtract 1 for the header line
+        if current_lines < max_lines:
+            break
+        file_count += 1
+        incremental_filename = f"{base_filename.replace('.csv', '')}_part{file_count}.csv"
+        current_lines = 0
+
     if not os.path.isfile(incremental_filename):
         write_header(incremental_filename)
 
