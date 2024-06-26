@@ -127,7 +127,7 @@ def write_results_score(filename, results, data_type):
     logger.info('save results to {}'.format(filename))
 
 
-def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_data, waiting_area, service_area, incremental_video):
+def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_data, waiting_area, service_area):
     # Desenhar as áreas de espera e de atendimento
     cv2.rectangle(img, (waiting_area[0], waiting_area[1]), (waiting_area[2], waiting_area[3]), (255, 0, 0), 2)
     cv2.putText(img, 'Waiting Area', (waiting_area[0], waiting_area[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
@@ -167,7 +167,6 @@ def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_data, w
     # Caminho de saída para a imagem processada
     output_path = os.path.join(save_dir, f'{frame_idx:05d}.jpg')
     cv2.imwrite(output_path, img)
-    incremental_video.write(img)
 
 
 def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_image=True, frame_rate=30, use_cuda=True):
@@ -177,8 +176,6 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     timer = Timer()
     results = []
     frame_id = 0
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    incremental_video = cv2.VideoWriter(osp.join(save_dir, 'output_video.mp4'), fourcc, 24.0, (3840, 2160))
     tracking_data = {}  # Para armazenar os dados de rastreamento
 
     # Definir áreas de interesse (substituir pelos valores reais)
@@ -240,7 +237,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
                                           fps=1. / timer.average_time)
             if save_dir is not None:
                 save_image_with_boxes(save_dir, online_im, online_targets, frame_id, time_data, waiting_area,
-                                      service_area, incremental_video)
+                                      service_area)
 
         if show_image:
             cv2_imshow(online_im)
