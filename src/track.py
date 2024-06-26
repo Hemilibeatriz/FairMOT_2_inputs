@@ -178,7 +178,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     results = []
     frame_id = 0
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    incremental_video = cv2.VideoWriter(osp.join(save_dir, 'output_video.mp4'), fourcc, 24.0, (1920, 1080))
+    incremental_video = cv2.VideoWriter(osp.join(save_dir, 'output_video.mp4'), fourcc, 24.0, (3840, 2160))
     tracking_data = {}  # Para armazenar os dados de rastreamento
 
     # Definir áreas de interesse (substituir pelos valores reais)
