@@ -177,11 +177,6 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     results = []
     frame_id = 0
     tracking_data = {}  # Para armazenar os dados de rastreamento
-    # Configurações do VideoWriter
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    output_video_path = os.path.join(save_dir, 'output.mp4') if save_dir else 'output.mp4'
-    video_writer = cv2.VideoWriter(output_video_path, fourcc, frame_rate,
-                                   (dataloader.dataset.img_size[1], dataloader.dataset.img_size[0]))
 
     # Definir áreas de interesse (substituir pelos valores reais)
     waiting_area = (100, 200, 400, 600)
@@ -191,7 +186,14 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     time_data = {}
 
     #incremental_filename = result_filename.replace('.txt', '_incremental.csv')
+    # Caminho do vídeo de saída
+    output_video_path = os.path.join(save_dir, 'output.mp4')
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 
+    # Inicializa o VideoWriter com as dimensões do primeiro frame
+    first_frame = next(iter(dataloader))[2]
+    video_writer = cv2.VideoWriter(output_video_path, fourcc, frame_rate,
+                                   (first_frame.shape[1], first_frame.shape[0]))
 
     for i, (path, img, img0) in enumerate(dataloader):
         if frame_id % 20 == 0:
@@ -243,9 +245,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
             if save_dir is not None:
                 save_image_with_boxes(save_dir, online_im, online_targets, frame_id, time_data, waiting_area,
                                       service_area)
-
-                # Escreve o frame no vídeo
-                video_writer.write(online_im)
+                video_writer.write(online_im)  # Write the frame to the video
 
         if show_image:
             cv2_imshow(online_im)
@@ -254,7 +254,6 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
         frame_id += 1
 
     # save results
-    video_writer.release()
     write_results(result_filename.replace('.txt', '.csv'), results, data_type)
     return frame_id, timer.average_time, timer.calls
 
