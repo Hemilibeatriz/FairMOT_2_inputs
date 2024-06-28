@@ -172,6 +172,14 @@ def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_data, w
 def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_image=True, frame_rate=30, use_cuda=True):
     if save_dir:
         mkdir_if_missing(save_dir)
+
+    # Configurações do VideoWriter
+    video_path = os.path.join(save_dir, 'output_video.avi')
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    frame_width = int(dataloader.img_size[0])
+    frame_height = int(dataloader.img_size[1])
+    out = cv2.VideoWriter(video_path, fourcc, frame_rate, (frame_width, frame_height))
+
     tracker = JDETracker(opt, frame_rate=frame_rate)
     timer = Timer()
     results = []
@@ -186,14 +194,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     time_data = {}
 
     #incremental_filename = result_filename.replace('.txt', '_incremental.csv')
-    # Caminho do vídeo de saída
-    output_video_path = os.path.join(save_dir, 'output.mp4')
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 
-    # Inicializa o VideoWriter com as dimensões do primeiro frame
-    first_frame = next(iter(dataloader))[2]
-    video_writer = cv2.VideoWriter(output_video_path, fourcc, frame_rate,
-                                   (first_frame.shape[1], first_frame.shape[0]))
 
     for i, (path, img, img0) in enumerate(dataloader):
         if frame_id % 20 == 0:
@@ -245,7 +246,9 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
             if save_dir is not None:
                 save_image_with_boxes(save_dir, online_im, online_targets, frame_id, time_data, waiting_area,
                                       service_area)
-                video_writer.write(online_im)  # Write the frame to the video
+
+                # Adiciona o frame ao vídeo
+                out.write(online_im)
 
         if show_image:
             cv2_imshow(online_im)
@@ -255,6 +258,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
 
     # save results
     write_results(result_filename.replace('.txt', '.csv'), results, data_type)
+    out.release()  # Libera o VideoWriter
     return frame_id, timer.average_time, timer.calls
 
 
