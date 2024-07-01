@@ -29,9 +29,9 @@ def write_results(filename, results, data_type):
     with open(filename, 'w', newline='') as f:
         writer = csv.writer(f)
         if data_type == 'mot':
-            writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
+            writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated', 'num_detections'])
         elif data_type == 'kitti':
-            writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score'])
+            writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score', 'num_detections'])
         else:
             raise ValueError(data_type)
 
@@ -43,10 +43,11 @@ def write_results(filename, results, data_type):
                     continue
                 x1, y1, w, h = tlwh
                 x2, y2 = x1 + w, y1 + h
+                num_detect = len(tlwhs)
                 if data_type == 'mot':
-                    writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1])
+                    writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1, num_detect])
                 elif data_type == 'kitti':
-                    writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10])
+                    writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10, num_detect])
     logger.info('save results to {}'.format(filename))
 
 
@@ -79,15 +80,16 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
         # Write the header if needed
         if file_needs_header:
             if data_type == 'mot':
-                writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated'])
+                writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated', 'num_detections'])
             elif data_type == 'kitti':
                 writer.writerow(
                     ['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height',
-                     'width', 'length', 'location', 'rotation_y', 'score'])
+                     'width', 'length', 'location', 'rotation_y', 'score', 'num_detections'])
             else:
                 raise ValueError(data_type)
 
         # Write the data rows
+        num_detections = len(tlwhs)
         if data_type == 'kitti':
             frame_id -= 1
         for tlwh, track_id in zip(tlwhs, track_ids):
@@ -96,11 +98,11 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
             x1, y1, w, h = tlwh
             x2, y2 = x1 + w, y1 + h
             if data_type == 'mot':
-                writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1])
+                writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1, num_detections])
             elif data_type == 'kitti':
                 writer.writerow(
                     [frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000,
-                     -10])
+                     -10, num_detections])
 
     logger.info('Appended incremental results to {}'.format(current_filename))
 
