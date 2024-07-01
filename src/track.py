@@ -236,10 +236,10 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
 
         timer.toc()
         # save results
-        results.append((frame_id + 1, online_tlwhs, online_ids))
+        results.append((frame_id, online_tlwhs, online_ids))
 
         # save results incrementally
-        write_results_incremental(result_filename.replace('.txt', '.csv'), frame_id + 1, online_tlwhs, online_ids, data_type)
+        write_results_incremental(result_filename.replace('.txt', '.csv'), frame_id, online_tlwhs, online_ids, data_type)
 
         # Save image with bounding boxes and area markings
         if show_image or save_dir is not None:
