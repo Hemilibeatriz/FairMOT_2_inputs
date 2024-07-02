@@ -204,6 +204,9 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
 
     #incremental_filename = result_filename.replace('.txt', '_incremental.csv')
 
+    # Variáveis para armazenar o número máximo de detecções e o timestamp correspondente
+    max_detections = 0
+    max_detections_timestamp = ""
 
     for i, (path, img, img0) in enumerate(dataloader):
         if frame_id % 20 == 0:
@@ -248,6 +251,12 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
         # save results incrementally
         write_results_incremental(result_filename.replace('.txt', '.csv'), frame_id, online_tlwhs, online_ids, data_type)
 
+        # Atualizar o número máximo de detecções e o timestamp correspondente
+        num_detections = len(online_tlwhs)
+        if num_detections > max_detections:
+            max_detections = num_detections
+            max_detections_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         # Save image with bounding boxes and area markings
         if show_image or save_dir is not None:
             online_im = vis.plot_tracking(img0, online_tlwhs, online_ids, frame_id=frame_id,
@@ -268,6 +277,9 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
     # save results
     write_results(result_filename.replace('.txt', '.csv'), results, data_type)
     out.release()  # Libera o VideoWriter
+
+    # Exibir o timestamp com o maior número de detecções
+    print(f"Timestamp com o maior número de detecções ({max_detections} detecções): {max_detections_timestamp}")
     return frame_id, timer.average_time, timer.calls
 
 
