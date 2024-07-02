@@ -13,6 +13,7 @@ import motmetrics as mm
 import numpy as np
 import torch
 from google.colab.patches import cv2_imshow
+from datetime import datetime
 
 from tracker.multitracker import JDETracker
 from tracking_utils import visualization as vis
@@ -29,11 +30,14 @@ def write_results(filename, results, data_type):
     with open(filename, 'w', newline='') as f:
         writer = csv.writer(f)
         if data_type == 'mot':
-            writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated', 'num_detections'])
+            writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated', 'num_detections', 'timestamp'])
         elif data_type == 'kitti':
-            writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score', 'num_detections'])
+            writer.writerow(['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height', 'width','length', 'location', 'rotation_y', 'score', 'num_detections', 'timestamp'])
         else:
             raise ValueError(data_type)
+
+        # Get the current timestamp
+        ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         for frame_id, tlwhs, track_ids in results:
             if data_type == 'kitti':
@@ -45,9 +49,9 @@ def write_results(filename, results, data_type):
                 x2, y2 = x1 + w, y1 + h
                 num_detect = len(tlwhs)
                 if data_type == 'mot':
-                    writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1, num_detect])
+                    writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1, num_detect, ts])
                 elif data_type == 'kitti':
-                    writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10, num_detect])
+                    writer.writerow([frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000, -10, num_detect, ts])
     logger.info('save results to {}'.format(filename))
 
 
@@ -80,13 +84,16 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
         # Write the header if needed
         if file_needs_header:
             if data_type == 'mot':
-                writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated', 'num_detections'])
+                writer.writerow(['frame', 'id', 'x1', 'y1', 'w', 'h', 'confidence', 'class', 'visibility', 'truncated', 'num_detections', 'timestamp'])
             elif data_type == 'kitti':
                 writer.writerow(
                     ['frame', 'id', 'class', 'truncated', 'occluded', 'alpha', 'x1', 'y1', 'x2', 'y2', 'height',
-                     'width', 'length', 'location', 'rotation_y', 'score', 'num_detections'])
+                     'width', 'length', 'location', 'rotation_y', 'score', 'num_detections', 'timestamp'])
             else:
                 raise ValueError(data_type)
+
+        # Get the current timestamp
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         # Write the data rows
         num_detections = len(tlwhs)
@@ -98,11 +105,11 @@ def write_results_incremental(filename, frame_id, tlwhs, track_ids, data_type):
             x1, y1, w, h = tlwh
             x2, y2 = x1 + w, y1 + h
             if data_type == 'mot':
-                writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1, num_detections])
+                writer.writerow([frame_id, track_id, x1, y1, w, h, 1, -1, -1, -1, num_detections, timestamp])
             elif data_type == 'kitti':
                 writer.writerow(
                     [frame_id, track_id, 'pedestrian', 0, 0, -10, x1, y1, x2, y2, -10, -10, -10, -1000, -1000, -1000,
-                     -10, num_detections])
+                     -10, num_detections, timestamp])
 
     logger.info('Appended incremental results to {}'.format(current_filename))
 
