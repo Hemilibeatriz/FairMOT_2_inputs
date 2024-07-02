@@ -136,7 +136,10 @@ def write_results_score(filename, results, data_type):
     logger.info('save results to {}'.format(filename))
 
 
-def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_data, waiting_area, service_area):
+def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_data, waiting_area, service_area, max_detect_ts, max_detect):
+    text_scale = max(1, img.shape[1] / 1600.)
+
+
     # Desenhar as áreas de espera e de atendimento
     cv2.rectangle(img, (waiting_area[0], waiting_area[1]), (waiting_area[2], waiting_area[3]), (255, 0, 0), 2)
     cv2.putText(img, 'Waiting Area', (waiting_area[0], waiting_area[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
@@ -145,6 +148,10 @@ def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_data, w
     cv2.rectangle(img, (service_area[0], service_area[1]), (service_area[2], service_area[3]), (0, 0, 255), 2)
     cv2.putText(img, 'Service Area', (service_area[0], service_area[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                 (0, 0, 255), 2)
+
+    # Adicionar o ID do objeto
+    cv2.putText(img, f'max_detections: {max_detect}', (0, int(5 * text_scale)), cv2.FONT_HERSHEY_PLAIN, text_scale, (0, 0, 255), thickness=2)
+    cv2.putText(img, f'max_detections: {max_detect_ts}', (0, int(10 * text_scale)), cv2.FONT_HERSHEY_PLAIN, text_scale,(0, 0, 255), thickness=2)
 
     for t in online_targets:
         tlwh = t.tlwh
@@ -263,7 +270,7 @@ def eval_seq(opt, dataloader, data_type, result_filename, save_dir=None, show_im
                                           fps=1. / timer.average_time)
             if save_dir is not None:
                 save_image_with_boxes(save_dir, online_im, online_targets, frame_id, time_data, waiting_area,
-                                      service_area)
+                                      service_area,max_detections_timestamp, max_detections)
 
                 # Adiciona o frame ao vídeo
                 out.write(online_im)
