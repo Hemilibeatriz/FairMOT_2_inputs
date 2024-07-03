@@ -150,8 +150,8 @@ def save_image_with_boxes(save_dir, img, online_targets, frame_idx, time_data, w
                 (0, 0, 255), 2)
 
     # Adicionar o ID do objeto
-    cv2.putText(img, f'max_detections: {max_detect}', (0, int(5 * text_scale)), cv2.FONT_HERSHEY_PLAIN, text_scale, (0, 0, 255), thickness=2)
-    cv2.putText(img, f'max_detections: {max_detect_ts}', (0, int(10 * text_scale)), cv2.FONT_HERSHEY_PLAIN, text_scale,(0, 0, 255), thickness=2)
+    cv2.putText(img, f'quantidade: {max_detect}', (0, int(45 * text_scale)), cv2.FONT_HERSHEY_PLAIN, text_scale, (0, 0, 255), thickness=2)
+    cv2.putText(img, f'Maior movimento: {max_detect_ts}', (0, int(30 * text_scale)), cv2.FONT_HERSHEY_PLAIN, text_scale,(0, 0, 255), thickness=2)
 
     for t in online_targets:
         tlwh = t.tlwh
