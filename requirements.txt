@@ -11,3 +11,6 @@ openpyxl
 Pillow
 tensorboardX
 fvcore
+torch
+torchvision
+cython
